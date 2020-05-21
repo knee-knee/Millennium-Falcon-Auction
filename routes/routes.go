@@ -12,5 +12,7 @@ type Routes struct {
 
 func New(r *repo.Repo) *Routes {
 	log.Println("Instantiating a new route")
-	return &Routes{}
+	return &Routes{
+		Repo: r,
+	}
 }

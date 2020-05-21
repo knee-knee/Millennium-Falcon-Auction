@@ -43,11 +43,12 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 
 	des, err := r.Repo.GetItemDescription(itemID)
 	if err != nil {
-		log.Printf("routes: Error getting item description: %s \n", err)
+		log.Printf("routes: Error getting item description: %v \n", err)
 		http.Error(w, "Internal Server Error", 500)
+		return
 	}
 	if des == "" {
-		log.Printf("routes: user trying to search for item: %s which does not exists \n", itemID)
+		log.Printf("routes: could not find item %s \n", itemID)
 		http.Error(w, "could not find item", 404)
 		return
 	}
@@ -57,6 +58,7 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Printf("routes: Error getting bids for %s: %v \n", itemID, err)
 		http.Error(w, "Internal Server Error", 500)
+		return
 	}
 
 	itemInfo := ItemInfo{
