@@ -10,11 +10,13 @@ import (
 	"github.com/millennium-falcon-auction/repo"
 )
 
+const authHeader = "auth"
+
 type Bid struct {
-	Email  string `json:"email"`
 	Amount int    `json:"amount"`
 	Item   string `json:"item,ommitempty"`
 	BidID  string `json:"bid_id,ommitempty"`
+	Email  string `json:"email,ommitempty"`
 }
 
 type UpdateBidInput struct {
@@ -30,9 +32,11 @@ func (b Bid) toDyanmo() repo.Bid {
 	}
 }
 
+// TODO: right now for all the bid stuff Im fetching the user based off their session. Think of a better way to do this.
 func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	log.Println("routes: attempting to place a new bid")
 
+	// Get the item ID from the URL
 	params := mux.Vars(req)
 	itemID, ok := params["item_id"]
 	if !ok {
@@ -63,6 +67,15 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	in.BidID = uuid.New().String()
 	in.Item = itemID
 
+	session := req.Header.Get(authHeader)
+	user, err := r.Repo.GetUserBySession(session)
+	if err != nil {
+		log.Println("routes: Errror getting the user based of their session")
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
+
+	in.Email = user.Email
 	if err := r.Repo.CreateBid(in.toDyanmo()); err != nil {
 		log.Printf("routes: error creating bid %v", err)
 		http.Error(w, "Internal Sever Error", http.StatusInternalServerError)
@@ -77,6 +90,7 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// TODO: figure out a godo way to deal with the race condition that two different people can be updating to the top bid
 	// update the top bid if this is the new top bid
 	if in.Amount > bid.Amount {
 		if err := r.Repo.UpdateItemsTopBid(in.BidID, itemID); err != nil {
@@ -86,6 +100,7 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	w.Write([]byte(in.BidID))
 }
 
 // Ensure here that the person that is updating the bid is the same user.
@@ -112,10 +127,53 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 
+	bid, err := r.Repo.GetBid(id)
+	if err != nil {
+		log.Printf("routes: Error getting bid based off id %s \n", id)
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
+
+	session := req.Header.Get(authHeader)
+	user, err := r.Repo.GetUserBySession(session)
+	if err != nil {
+		log.Println("routes: Errror getting the user based of their session")
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
+
+	if bid.Bidder != user.Email {
+		log.Println("routes: User %s was trying to update a bid they did not make", user.Email)
+		http.Error(w, "Internal Server Error", http.StatusForbidden)
+		return
+	}
+
 	if err := r.Repo.UpdateBid(id, in.Amount); err != nil {
 		log.Println("routes: Error trying to update bid")
 		http.Error(w, "Internal Server Error", 500)
 		return
+	}
+
+	// get the item and the top bid to see if this is the new top bid
+	item, err := r.Repo.GetItem(bid.ItemID)
+	if err != nil {
+		log.Printf("routes: Error trying to get item %s \n", bid.ItemID)
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
+	topBid, err := r.Repo.GetBid(item.TopBid)
+	if err != nil {
+		log.Printf("routes: Error getting bid based off id %s \n", id)
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
+
+	if in.Amount > topBid.Amount {
+		if err := r.Repo.UpdateItemsTopBid(bid.BidID, item.ID); err != nil {
+			log.Printf("routes: error trying to update top bid %v \n", err)
+			http.Error(w, "Internal Server Error", 500)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)

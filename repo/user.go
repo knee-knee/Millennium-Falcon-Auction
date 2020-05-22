@@ -18,7 +18,7 @@ type User struct {
 }
 
 func (r *Repo) GetUserBySession(session string) (User, error) {
-	log.Printf("Getting user with session %s. \n", session)
+	log.Printf("repo: Getting user with session %s. \n", session)
 	resp, err := r.svc.Query(&dynamodb.QueryInput{
 		TableName: aws.String("millennium-falcon-auction-users"),
 		IndexName: aws.String("session-index"),
@@ -42,8 +42,12 @@ func (r *Repo) GetUserBySession(session string) (User, error) {
 		log.Printf("repo: count from query is empty \n")
 		return User{}, errors.New("could not find user with session")
 	}
+	if *resp.Count == 0 {
+		log.Printf("repo: No user exists with session %s \n", session)
+		return User{}, errors.New("no user exists with the session provided")
+	}
 
-	log.Println("Successfully retrieved user from dynamo.")
+	log.Println("repo: Successfully retrieved user from dynamo.")
 
 	user := User{}
 	if err := dynamodbattribute.UnmarshalMap(resp.Items[0], &user); err != nil {
@@ -53,7 +57,7 @@ func (r *Repo) GetUserBySession(session string) (User, error) {
 }
 
 func (r *Repo) GetUser(email string) (User, error) {
-	log.Printf("Getting user with email %s. \n", email)
+	log.Printf("repo: Getting user with email %s. \n", email)
 	queryOutput, err := r.svc.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String("millennium-falcon-auction-users"),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -67,7 +71,7 @@ func (r *Repo) GetUser(email string) (User, error) {
 		return User{}, errors.New("could not retrieve user from dynamo")
 	}
 
-	log.Println("Successfully retrieved user from dynamo.")
+	log.Println("repo: Successfully retrieved user from dynamo.")
 
 	user := User{}
 	if err := dynamodbattribute.UnmarshalMap(queryOutput.Item, &user); err != nil {
