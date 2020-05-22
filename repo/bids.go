@@ -2,7 +2,6 @@ package repo
 
 import (
 	"errors"
-	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -36,26 +35,39 @@ func (r *Repo) CreateBid(in Bid) error {
 	return nil
 }
 
+// TODO: figure out why get item is not working here
 func (r *Repo) GetBid(bidID string) (Bid, error) {
 	log.Printf("repo: Getting bid %s", bidID)
 
-	queryOutput, err := r.svc.GetItem(&dynamodb.GetItemInput{
+	resp, err := r.svc.Query(&dynamodb.QueryInput{
 		TableName: aws.String("millennium-falcon-auction-bids"),
-		Key: map[string]*dynamodb.AttributeValue{
+		IndexName: aws.String("bidID-index"),
+		KeyConditions: map[string]*dynamodb.Condition{
 			"bidID": {
-				S: aws.String(bidID),
+				ComparisonOperator: aws.String("EQ"),
+				AttributeValueList: []*dynamodb.AttributeValue{
+					{
+						S: aws.String(bidID),
+					},
+				},
 			},
 		},
+		ScanIndexForward: aws.Bool(false),
+		Limit:            aws.Int64(1),
 	})
 	if err != nil {
-		log.Printf("repo: Error getting bid from dyanmo %v \n", err)
-		return Bid{}, errors.New("could not retrieve bid from dynamo")
+		return Bid{}, err
+	}
+	if resp.Count == nil {
+		log.Printf("repo: count from scan is empty \n")
+		return Bid{}, errors.New("count of scan was empty")
 	}
 
 	log.Println("repo: Successfully retrieved bid from dyanmo.")
 
 	var bid Bid
-	if err := dynamodbattribute.UnmarshalMap(queryOutput.Item, &bid); err != nil {
+	// TODO: this isn't great but its what is needed because we need to use the query.
+	if err := dynamodbattribute.UnmarshalMap(resp.Items[0], &bid); err != nil {
 		return Bid{}, err
 	}
 	return bid, nil
@@ -77,7 +89,7 @@ func (r *Repo) GetTopBids(itemID string, numberOfBids int) ([]Bid, error) {
 				},
 			},
 		},
-		ScanIndexForward: aws.Bool(true),
+		ScanIndexForward: aws.Bool(false),
 		Limit:            aws.Int64(int64(numberOfBids)),
 	})
 	if err != nil {
@@ -92,10 +104,6 @@ func (r *Repo) GetTopBids(itemID string, numberOfBids int) ([]Bid, error) {
 	if err := dynamodbattribute.UnmarshalListOfMaps(resp.Items, &bids); err != nil {
 		log.Printf("repo: error unmarshaling map: %v \n", err)
 		return nil, err
-	}
-
-	for i, bid := range bids {
-		fmt.Printf("i: %d: bid amount: %d bid email: %s  \n", i, bid.Amount, bid.Bidder)
 	}
 
 	return bids, nil
