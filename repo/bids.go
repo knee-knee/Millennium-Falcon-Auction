@@ -3,6 +3,7 @@ package repo
 import (
 	"errors"
 	"log"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -35,6 +36,59 @@ func (r *Repo) CreateBid(in Bid) error {
 	return nil
 }
 
+func (r *Repo) DeleteBid(bid Bid) error {
+	input := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"bidID": {
+				S: aws.String(bid.BidID),
+			},
+			"amount": {
+				N: aws.String(strconv.Itoa(bid.Amount)),
+			},
+		},
+		TableName: aws.String("millennium-falcon-auction-bids"),
+	}
+
+	_, err := r.svc.DeleteItem(input)
+	if err != nil {
+		log.Printf("repo: error trying to delete bid %v \n", err)
+		return err
+	}
+
+	return nil
+}
+
+// going to assume here that the bid you are updating is just the amount
+// also since the amount is part of the key im going to make this a little hacky
+// Im going to first get the bid, delete it, then create a new entry with the updated amount
+func (r *Repo) UpdateBid(bidID string, amount int) error {
+	log.Printf("repo: Attempting to update bid %v with new amount %d", bidID, amount)
+
+	// first get the bid
+	bid, err := r.GetBid(bidID)
+	if err != nil {
+		log.Println("repo: error getting bid")
+		return err
+	}
+
+	// delete bid
+	if err := r.DeleteBid(bid); err != nil {
+		log.Println("repo: error deleting bid")
+		return err
+	}
+
+	// change bid to updated values
+	bid.Amount = amount
+
+	// create new bid
+	if err := r.CreateBid(bid); err != nil {
+		log.Println("repo: error creating bid")
+		return err
+	}
+
+	return nil
+}
+
 // TODO: figure out why get item is not working here
 func (r *Repo) GetBid(bidID string) (Bid, error) {
 	log.Printf("repo: Getting bid %s", bidID)
@@ -59,8 +113,8 @@ func (r *Repo) GetBid(bidID string) (Bid, error) {
 		return Bid{}, err
 	}
 	if resp.Count == nil {
-		log.Printf("repo: count from scan is empty \n")
-		return Bid{}, errors.New("count of scan was empty")
+		log.Printf("repo: count from query is empty \n")
+		return Bid{}, errors.New("count of query was empty")
 	}
 
 	log.Println("repo: Successfully retrieved bid from dyanmo.")

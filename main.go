@@ -25,6 +25,7 @@ func main() {
 
 	// bid
 	r.HandleFunc("/bid/{item_id}", routes.PlaceBid).Methods(http.MethodPost)
+	r.HandleFunc("/bid/{id}", routes.UpdateBid).Methods(http.MethodPatch)
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
