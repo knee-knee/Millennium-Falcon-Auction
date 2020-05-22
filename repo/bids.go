@@ -89,7 +89,7 @@ func (r *Repo) UpdateBid(bidID string, amount int) error {
 	return nil
 }
 
-// TODO: figure out why get item is not working here
+// TODO: figure out why I have to use query
 func (r *Repo) GetBid(bidID string) (Bid, error) {
 	log.Printf("repo: Getting bid %s", bidID)
 
