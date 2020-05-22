@@ -23,5 +23,8 @@ func main() {
 	// item info
 	r.HandleFunc("/item/{id}", routes.GetItemInfo).Methods(http.MethodGet)
 
+	// bid
+	r.HandleFunc("/bid/{item_id}", routes.PlaceBid).Methods(http.MethodPost)
+
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

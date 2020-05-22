@@ -13,10 +13,39 @@ import (
 type Item struct {
 	ID          string `dynamodbav:"ID"`
 	Description string `dynamodbav:"description"`
+	TopBid      string `dynamodbav:"top_bid"`
 }
 
-func (r *Repo) GetItemDescription(itemID string) (string, error) {
-	log.Printf("repo: Getting item description. \n", itemID)
+func (r *Repo) UpdateItemsTopBid(topBid, itemID string) error {
+	log.Printf("repo: Attempting to update the top bid for %s \n", itemID)
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":tp": {
+				S: aws.String(topBid),
+			},
+		},
+		TableName: aws.String("millennium-falcon-auction-items"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"itemID": {
+				S: aws.String(itemID),
+			},
+		},
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		UpdateExpression: aws.String("set top_bid = :tp"),
+	}
+
+	_, err := r.svc.UpdateItem(input)
+	if err != nil {
+		log.Printf("repo: Error attempting to update item: %v", err)
+		return err
+	}
+
+	log.Println("repo: Successfully updated item in repo")
+	return nil
+}
+
+func (r *Repo) GetItem(itemID string) (Item, error) {
+	log.Printf("repo: Getting item. \n", itemID)
 
 	queryOutput, err := r.svc.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String("millennium-falcon-auction-items"),
@@ -27,14 +56,14 @@ func (r *Repo) GetItemDescription(itemID string) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", errors.New("could not retrieve item from dynamo")
+		return Item{}, errors.New("could not retrieve item from dynamo")
 	}
 
 	log.Println("Successfully retrieved item from dynamo.")
 
 	item := Item{}
 	if err := dynamodbattribute.UnmarshalMap(queryOutput.Item, &item); err != nil {
-		return "", err
+		return Item{}, err
 	}
-	return item.Description, nil
+	return item, nil
 }

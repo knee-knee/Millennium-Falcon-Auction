@@ -19,16 +19,15 @@ type ItemInfo struct {
 func bidsFromRepo(b []repo.Bid) []Bid {
 	bids := make([]Bid, len(b))
 	for i, bid := range b {
-		bids[i].Amount = bid.Amount
-		bids[i].Bidder = bid.Bidder
+		bids[i] = Bid{
+			Amount: bid.Amount,
+			Email:  bid.Bidder,
+			Item:   bid.ItemID,
+			BidID:  bid.BidID,
+		}
 	}
 
 	return bids
-}
-
-type Bid struct {
-	Amount int    `json:"amount"`
-	Bidder string `json:"bidder"`
 }
 
 func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
@@ -36,18 +35,18 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 	itemID, ok := params["id"]
 	if !ok {
 		log.Println("routes: Request made without itemID")
-		http.Error(w, "did not provide question ID", 400)
+		http.Error(w, "did not provide item ID", 400)
 		return
 	}
 	log.Printf("routes: Getting item info for %s \n", itemID)
 
-	des, err := r.Repo.GetItemDescription(itemID)
+	item, err := r.Repo.GetItem(itemID)
 	if err != nil {
-		log.Printf("routes: Error getting item description: %v \n", err)
+		log.Printf("routes: Error getting item: %v \n", err)
 		http.Error(w, "Internal Server Error", 500)
 		return
 	}
-	if des == "" {
+	if (item == repo.Item{}) {
 		log.Printf("routes: could not find item %s \n", itemID)
 		http.Error(w, "could not find item", 404)
 		return
@@ -62,7 +61,7 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 	}
 
 	itemInfo := ItemInfo{
-		Description: des,
+		Description: item.Description,
 		Bids:        bidsFromRepo(bids),
 	}
 

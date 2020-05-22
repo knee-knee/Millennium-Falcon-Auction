@@ -17,6 +17,25 @@ type Bid struct {
 	BidID  string `dynamodbav:"bidID"`
 }
 
+func (r *Repo) CreateBid(in Bid) error {
+	log.Println("repo: attempting to create a new bid in dyanmo.")
+	item, err := dynamodbattribute.MarshalMap(in)
+	if err != nil {
+		return errors.New("repo: could not marshal created question into dynamo map")
+	}
+
+	if _, err = r.svc.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String("millennium-falcon-auction-bids"),
+		Item:      item,
+	}); err != nil {
+		return errors.New("repo: could not put created bid into dynamo")
+	}
+
+	log.Printf("repo: successfully created bid %s", in.BidID)
+
+	return nil
+}
+
 func (r *Repo) GetBid(bidID string) (Bid, error) {
 	log.Printf("repo: Getting bid %s", bidID)
 
@@ -29,6 +48,7 @@ func (r *Repo) GetBid(bidID string) (Bid, error) {
 		},
 	})
 	if err != nil {
+		log.Printf("repo: Error getting bid from dyanmo %v \n", err)
 		return Bid{}, errors.New("could not retrieve bid from dynamo")
 	}
 
