@@ -23,6 +23,10 @@ type UpdateBidInput struct {
 	Amount int `json:"amount"`
 }
 
+type PlaceBidOutput struct {
+	BidID string `json:"bid_id"`
+}
+
 func (b Bid) toDyanmo() repo.Bid {
 	return repo.Bid{
 		Amount: b.Amount,
@@ -49,7 +53,7 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	item, err := r.Repo.GetItem(itemID)
 	if err != nil {
 		log.Printf("routes: Error getting item: %v \n", err)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 	if (item == repo.Item{}) {
@@ -60,7 +64,7 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 
 	var in Bid
 	if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 	defer req.Body.Close()
@@ -71,14 +75,14 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	user, err := r.Repo.GetUserBySession(session)
 	if err != nil {
 		log.Println("routes: Errror getting the user based of their session")
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
 	in.Email = user.Email
 	if err := r.Repo.CreateBid(in.toDyanmo()); err != nil {
 		log.Printf("routes: error creating bid %v", err)
-		http.Error(w, "Internal Sever Error", http.StatusInternalServerError)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
@@ -86,7 +90,7 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	bid, err := r.Repo.GetBid(item.TopBid)
 	if err != nil {
 		log.Printf("routes: error getting top bid %v", err)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
@@ -95,12 +99,21 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	if in.Amount > bid.Amount {
 		if err := r.Repo.UpdateItemsTopBid(in.BidID, itemID); err != nil {
 			log.Printf("routes: error trying to update top bid %v \n", err)
-			http.Error(w, "Internal Server Error", 500)
+			http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 			return
 		}
 	}
 
-	w.Write([]byte(in.BidID))
+	out := PlaceBidOutput{
+		BidID: in.BidID,
+	}
+	body, err := json.Marshal(out)
+	if err != nil {
+		log.Printf("routes: Error marshalling in to response body %v \n", err)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
+		return
+	}
+	w.Write(body)
 }
 
 // Ensure here that the person that is updating the bid is the same user.
@@ -122,7 +135,7 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 	var in UpdateBidInput
 	if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
 		log.Printf("routes: error decoding input %v", err)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 	defer req.Body.Close()
@@ -130,7 +143,7 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 	bid, err := r.Repo.GetBid(id)
 	if err != nil {
 		log.Printf("routes: Error getting bid based off id %s \n", id)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
@@ -138,19 +151,19 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 	user, err := r.Repo.GetUserBySession(session)
 	if err != nil {
 		log.Println("routes: Errror getting the user based of their session")
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
 	if bid.Bidder != user.Email {
 		log.Println("routes: User %s was trying to update a bid they did not make", user.Email)
-		http.Error(w, "Internal Server Error", http.StatusForbidden)
+		http.Error(w, internalErrorResponse, http.StatusForbidden)
 		return
 	}
 
 	if err := r.Repo.UpdateBid(id, in.Amount); err != nil {
 		log.Println("routes: Error trying to update bid")
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
@@ -158,20 +171,20 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 	item, err := r.Repo.GetItem(bid.ItemID)
 	if err != nil {
 		log.Printf("routes: Error trying to get item %s \n", bid.ItemID)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 	topBid, err := r.Repo.GetBid(item.TopBid)
 	if err != nil {
 		log.Printf("routes: Error getting bid based off id %s \n", id)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
 	if in.Amount > topBid.Amount {
 		if err := r.Repo.UpdateItemsTopBid(bid.BidID, item.ID); err != nil {
 			log.Printf("routes: error trying to update top bid %v \n", err)
-			http.Error(w, "Internal Server Error", 500)
+			http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 			return
 		}
 	}

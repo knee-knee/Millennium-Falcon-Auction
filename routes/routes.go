@@ -6,6 +6,11 @@ import (
 	"github.com/millennium-falcon-auction/repo"
 )
 
+const (
+	invalidUserNameOrPasswordResponse = "Invalid Email or Password"
+	internalErrorResponse             = "Internal Server Error"
+)
+
 type Routes struct {
 	Repo *repo.Repo
 }

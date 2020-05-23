@@ -35,7 +35,7 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 	itemID, ok := params["id"]
 	if !ok {
 		log.Println("routes: Request made without itemID")
-		http.Error(w, "did not provide item ID", 400)
+		http.Error(w, "did not provide item ID", http.StatusBadRequest)
 		return
 	}
 	log.Printf("routes: Getting item info for %s \n", itemID)
@@ -43,12 +43,12 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 	item, err := r.Repo.GetItem(itemID)
 	if err != nil {
 		log.Printf("routes: Error getting item: %v \n", err)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 	if (item == repo.Item{}) {
 		log.Printf("routes: could not find item %s \n", itemID)
-		http.Error(w, "could not find item", 404)
+		http.Error(w, "could not find item", http.StatusNotFound)
 		return
 	}
 
@@ -56,7 +56,7 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 	bids, err := r.Repo.GetTopBids(itemID, numberOfBidsToDisplay)
 	if err != nil {
 		log.Printf("routes: Error getting bids for %s: %v \n", itemID, err)
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
@@ -68,7 +68,7 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 	body, err := json.Marshal(itemInfo)
 	if err != nil {
 		log.Println("routes: could not marshal into response")
-		http.Error(w, "Internal Server Error", 500)
+		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
