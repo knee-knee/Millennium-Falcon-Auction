@@ -93,7 +93,7 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check to see if this is now the highest bid.
-	if err := r.CheckAndUpdateIfBidIsHightest(in.Amount, in.BidID, itemID); err != nil {
+	if err := r.UpdateHighestBid(itemID); err != nil {
 		log.Printf("routes: Error trying to check and see if this is the highest bid %v \n", err)
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
@@ -159,8 +159,7 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Check to see if this is now the highest bid.
-	if err := r.CheckAndUpdateIfBidIsHightest(in.Amount, id, updatedBid.ItemID); err != nil {
+	if err := r.UpdateHighestBid(updatedBid.ItemID); err != nil {
 		log.Printf("routes: Error trying to check and see if this is the highest bid %v \n", err)
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
