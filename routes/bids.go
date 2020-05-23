@@ -148,7 +148,7 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 
 	if bid.Bidder != user.Email {
 		log.Printf("routes: User %s was trying to update a bid they did not make \n", user.Email)
-		http.Error(w, internalErrorResponse, http.StatusForbidden)
+		http.Error(w, "Cannot update a Bid You Did Not Make", http.StatusForbidden)
 		return
 	}
 

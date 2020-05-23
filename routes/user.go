@@ -63,7 +63,7 @@ func (r *Routes) CreateUser(w http.ResponseWriter, req *http.Request) {
 	log.Println("routes: Starting to create user")
 	var in User
 	if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
-		log.Prinf("routes: Error trying to decode input %v \n", err)
+		log.Printf("routes: Error trying to decode input %v \n", err)
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
