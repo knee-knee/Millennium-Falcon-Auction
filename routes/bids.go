@@ -86,22 +86,11 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// check to see if this is now the top bid
-	bid, err := r.Repo.GetBid(item.TopBid)
-	if err != nil {
-		log.Printf("routes: error getting top bid %v", err)
+	// Check to see if this is now the highest bid.
+	if err := r.CheckAndUpdateIfBidIsHightest(in.Amount, in.BidID, itemID); err != nil {
+		log.Printf("routes: Error trying to check and see if this is the highest bid %v \n", err)
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
-	}
-
-	// TODO: figure out a godo way to deal with the race condition that two different people can be updating to the top bid
-	// update the top bid if this is the new top bid
-	if in.Amount > bid.Amount {
-		if err := r.Repo.UpdateItemsTopBid(in.BidID, itemID); err != nil {
-			log.Printf("routes: error trying to update top bid %v \n", err)
-			http.Error(w, internalErrorResponse, http.StatusInternalServerError)
-			return
-		}
 	}
 
 	out := PlaceBidOutput{
