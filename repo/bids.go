@@ -61,20 +61,20 @@ func (r *Repo) DeleteBid(bid Bid) error {
 // going to assume here that the bid you are updating is just the amount
 // also since the amount is part of the key im going to make this a little hacky
 // Im going to first get the bid, delete it, then create a new entry with the updated amount
-func (r *Repo) UpdateBid(bidID string, amount int) error {
+func (r *Repo) UpdateBid(bidID string, amount int) (Bid, error) {
 	log.Printf("repo: Attempting to update bid %v with new amount %d", bidID, amount)
 
 	// first get the bid
 	bid, err := r.GetBid(bidID)
 	if err != nil {
 		log.Println("repo: error getting bid")
-		return err
+		return Bid{}, err
 	}
 
 	// delete bid
 	if err := r.DeleteBid(bid); err != nil {
 		log.Println("repo: error deleting bid")
-		return err
+		return Bid{}, err
 	}
 
 	// change bid to updated values
@@ -83,10 +83,10 @@ func (r *Repo) UpdateBid(bidID string, amount int) error {
 	// create new bid
 	if err := r.CreateBid(bid); err != nil {
 		log.Println("repo: error creating bid")
-		return err
+		return Bid{}, err
 	}
 
-	return nil
+	return bid, nil
 }
 
 // TODO: figure out why I have to use query

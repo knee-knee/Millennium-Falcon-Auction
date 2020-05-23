@@ -161,32 +161,18 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := r.Repo.UpdateBid(id, in.Amount); err != nil {
+	updatedBid, err := r.Repo.UpdateBid(id, in.Amount)
+	if err != nil {
 		log.Println("routes: Error trying to update bid")
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
 
-	// get the item and the top bid to see if this is the new top bid
-	item, err := r.Repo.GetItem(bid.ItemID)
-	if err != nil {
-		log.Printf("routes: Error trying to get item %s \n", bid.ItemID)
+	// Check to see if this is now the highest bid.
+	if err := r.CheckAndUpdateIfBidIsHightest(in.Amount, id, updatedBid.ItemID); err != nil {
+		log.Printf("routes: Error trying to check and see if this is the highest bid %v \n", err)
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
-	}
-	topBid, err := r.Repo.GetBid(item.TopBid)
-	if err != nil {
-		log.Printf("routes: Error getting bid based off id %s \n", id)
-		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
-		return
-	}
-
-	if in.Amount > topBid.Amount {
-		if err := r.Repo.UpdateItemsTopBid(bid.BidID, item.ID); err != nil {
-			log.Printf("routes: error trying to update top bid %v \n", err)
-			http.Error(w, internalErrorResponse, http.StatusInternalServerError)
-			return
-		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)

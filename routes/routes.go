@@ -2,6 +2,7 @@ package routes
 
 import (
 	"log"
+	"sync"
 
 	"github.com/millennium-falcon-auction/repo"
 )
@@ -12,7 +13,8 @@ const (
 )
 
 type Routes struct {
-	Repo *repo.Repo
+	Repo          *repo.Repo
+	highestBidMux sync.Mutex
 }
 
 func New(r *repo.Repo) *Routes {
