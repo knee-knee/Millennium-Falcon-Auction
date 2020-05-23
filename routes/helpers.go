@@ -4,6 +4,7 @@ import (
 	"log"
 )
 
+// CheckAndUpdateIfBidIsHightest takes in a new amount for a bidID and and checks to see if that is the new highest bid for an item.
 func (r *Routes) CheckAndUpdateIfBidIsHightest(amount int, bidID, itemID string) error {
 	// Locking here because if two bids enter here higher than the current highest bid we need to lock
 	r.highestBidMux.Lock()

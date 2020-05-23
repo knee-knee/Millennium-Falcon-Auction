@@ -8,21 +8,24 @@ import (
 	"github.com/millennium-falcon-auction/repo"
 )
 
+// Login is the input object for when a user is logging in.
 type Login struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
+// User represents a user object.
 type User struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Session  string `json:"session,ommitempty"`
 }
 
-// This isnt the greatest because a session basically lasts forever.
+// Login will take in an email and password and return a valid session to the client.
 func (r *Routes) Login(w http.ResponseWriter, req *http.Request) {
 	var in Login
 	if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
+		log.Printf("routes: Error trying to decode input %v \n", err)
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
@@ -30,6 +33,7 @@ func (r *Routes) Login(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
 	if in.Email == "" || in.Password == "" {
+		log.Println("routes: email and password not provied for login request")
 		http.Error(w, invalidUserNameOrPasswordResponse, http.StatusBadRequest)
 		return
 	}
@@ -38,11 +42,13 @@ func (r *Routes) Login(w http.ResponseWriter, req *http.Request) {
 
 	resp, err := r.Repo.GetUser(in.Email)
 	if err != nil {
+		log.Println("routes: Error trying to get user")
 		http.Error(w, invalidUserNameOrPasswordResponse, http.StatusBadRequest)
 		return
 	}
 
 	if resp.Password != in.Password {
+		log.Printf("routes: User trying to login with invalid password %s \n", in.Email)
 		http.Error(w, invalidUserNameOrPasswordResponse, http.StatusBadRequest)
 		return
 	}
@@ -52,10 +58,12 @@ func (r *Routes) Login(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(resp.Session))
 }
 
+// CreateUser will create a new user and return the session for that user to use.
 func (r *Routes) CreateUser(w http.ResponseWriter, req *http.Request) {
 	log.Println("routes: Starting to create user")
 	var in User
 	if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
+		log.Prinf("routes: Error trying to decode input %v \n", err)
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}

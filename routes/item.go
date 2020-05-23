@@ -11,6 +11,7 @@ import (
 
 const numberOfBidsToDisplay = 10
 
+// ItemInfo is the information to display for an item up for auction.
 type ItemInfo struct {
 	Description string `json:"description"`
 	Bids        []Bid  `json:"Bids"`
@@ -30,12 +31,13 @@ func bidsFromRepo(b []repo.Bid) []Bid {
 	return bids
 }
 
+// GetItemInfo will return item info for an item up for auction.
 func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	itemID, ok := params["id"]
 	if !ok {
 		log.Println("routes: Request made without itemID")
-		http.Error(w, "did not provide item ID", http.StatusBadRequest)
+		http.Error(w, "Item ID was not provided", http.StatusBadRequest)
 		return
 	}
 	log.Printf("routes: Getting item info for %s \n", itemID)
@@ -64,7 +66,6 @@ func (r *Routes) GetItemInfo(w http.ResponseWriter, req *http.Request) {
 		Description: item.Description,
 		Bids:        bidsFromRepo(bids),
 	}
-
 	body, err := json.Marshal(itemInfo)
 	if err != nil {
 		log.Println("routes: could not marshal into response")

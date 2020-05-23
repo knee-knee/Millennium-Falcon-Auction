@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// User is the dyanmo representation of a user.
 type User struct {
 	Email    string `dynamodbav:"email"`
 	Password string `dynamodbav:"password"`

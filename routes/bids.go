@@ -12,6 +12,7 @@ import (
 
 const authHeader = "auth"
 
+// Bid represents a bid for an item.
 type Bid struct {
 	Amount int    `json:"amount"`
 	Item   string `json:"item,ommitempty"`
@@ -19,10 +20,12 @@ type Bid struct {
 	Email  string `json:"email,ommitempty"`
 }
 
+// UpdateBidInput is the input to update a bid.
 type UpdateBidInput struct {
 	Amount int `json:"amount"`
 }
 
+// PlaceBidOutput is the output when you place a bid.
 type PlaceBidOutput struct {
 	BidID string `json:"bid_id"`
 }
@@ -36,6 +39,7 @@ func (b Bid) toDyanmo() repo.Bid {
 	}
 }
 
+// PlaceBid will place a bid on an item.
 // TODO: right now for all the bid stuff Im fetching the user based off their session. Think of a better way to do this.
 func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	log.Println("routes: attempting to place a new bid")
@@ -45,7 +49,7 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	itemID, ok := params["item_id"]
 	if !ok {
 		log.Println("routes: Request made without itemID")
-		http.Error(w, "did not provide item ID", 400)
+		http.Error(w, "did not provide item ID", http.StatusBadRequest)
 		return
 	}
 
@@ -58,12 +62,14 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	}
 	if (item == repo.Item{}) {
 		log.Printf("routes: could not find item %s \n", itemID)
-		http.Error(w, "could not find item", 404)
+		http.Error(w, "could not find item", http.StatusNotFound)
 		return
 	}
+	log.Printf("routes: Succesfully got item info for %s \n", itemID)
 
 	var in Bid
 	if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
+		log.Printf("routes: Error trying to decode body %v \n", err)
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
@@ -105,8 +111,7 @@ func (r *Routes) PlaceBid(w http.ResponseWriter, req *http.Request) {
 	w.Write(body)
 }
 
-// Ensure here that the person that is updating the bid is the same user.
-// Also im just going to assume all you can update is the amount
+// UpdateBid will allow a user to update the amount on their bid.
 func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 	log.Println("routes: attempting to update an existing bid")
 
@@ -117,9 +122,6 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "did not provide bid ID", 400)
 		return
 	}
-
-	// here is where I would get the email, but I will want to add auth to do that
-	// Also check to see if this is now the top bid for the item
 
 	var in UpdateBidInput
 	if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
@@ -145,7 +147,7 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if bid.Bidder != user.Email {
-		log.Println("routes: User %s was trying to update a bid they did not make", user.Email)
+		log.Printf("routes: User %s was trying to update a bid they did not make \n", user.Email)
 		http.Error(w, internalErrorResponse, http.StatusForbidden)
 		return
 	}
@@ -163,6 +165,8 @@ func (r *Routes) UpdateBid(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, internalErrorResponse, http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("routes: Succesfully updated bid %s \n", id)
 
 	w.WriteHeader(http.StatusNoContent)
 }
