@@ -7,12 +7,14 @@ import (
 	"github.com/millennium-falcon-auction/repo"
 )
 
+// AuthHeader is the key for the auth header.
 const AuthHeader = "auth"
 
+// AuthMiddleware is the handler for the auth middleware.AuthMiddleware
+// AuthMiddleware will ensure that the a proper session is provided for the auth header.
 func (m *Middleware) AuthMiddleware(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log.Println("middleware: Trying to find user")
-		// Right now this is just the user ID till I have a better auth system.
 		token := req.Header.Get(AuthHeader)
 		if token == "" {
 			log.Println("mw: auth token was not provided for request")
