@@ -17,10 +17,13 @@ type User struct {
 	Session  string `dynamodbav:"session"`
 }
 
+const usersTableID = "millennium-falcon-auction-users"
+
+// GetUserBySession will return a user based off their active session.
 func (r *Repo) GetUserBySession(session string) (User, error) {
 	log.Printf("repo: Getting user with session %s. \n", session)
 	resp, err := r.svc.Query(&dynamodb.QueryInput{
-		TableName: aws.String("millennium-falcon-auction-users"),
+		TableName: aws.String(usersTableID),
 		IndexName: aws.String("session-index"),
 		KeyConditions: map[string]*dynamodb.Condition{
 			"session": {
@@ -51,15 +54,17 @@ func (r *Repo) GetUserBySession(session string) (User, error) {
 
 	user := User{}
 	if err := dynamodbattribute.UnmarshalMap(resp.Items[0], &user); err != nil {
+		log.Printf("repo: Error trying to unmarshal dyanmo output %v \n", err)
 		return User{}, err
 	}
 	return user, nil
 }
 
+// GetUser will return a user object based off of their email.
 func (r *Repo) GetUser(email string) (User, error) {
 	log.Printf("repo: Getting user with email %s. \n", email)
 	queryOutput, err := r.svc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String("millennium-falcon-auction-users"),
+		TableName: aws.String(usersTableID),
 		Key: map[string]*dynamodb.AttributeValue{
 			"email": {
 				S: aws.String(email),
@@ -81,6 +86,7 @@ func (r *Repo) GetUser(email string) (User, error) {
 	return user, nil
 }
 
+// CreateUser will create a new user in dyanmo.
 func (r *Repo) CreateUser(email, password string) (User, error) {
 	log.Printf("repo: Attempting to create user with email %s \n", email)
 	user := User{
@@ -91,13 +97,15 @@ func (r *Repo) CreateUser(email, password string) (User, error) {
 
 	item, err := dynamodbattribute.MarshalMap(user)
 	if err != nil {
+		log.Printf("repo: Error marshaling user %v \n", err)
 		return User{}, errors.New("could not marshal created user into dynamo map")
 	}
 
 	if _, err := r.svc.PutItem(&dynamodb.PutItemInput{
-		TableName: aws.String("millennium-falcon-auction-users"),
+		TableName: aws.String(usersTableID),
 		Item:      item,
 	}); err != nil {
+		log.Printf("repo: Error creating user %v \n", err)
 		return User{}, errors.New("could not put created user into dynamo")
 	}
 

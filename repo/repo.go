@@ -9,10 +9,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
+// Repo represents the shared values needed for access to the database.
 type Repo struct {
 	svc *dynamodb.DynamoDB
 }
 
+// New will return you a new instance of the repo object.
 func New() *Repo {
 	log.Println("instantiating a new repo")
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
@@ -22,6 +24,7 @@ func New() *Repo {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
+	log.Println("repo: Succesfuly created a new repo object")
 	return &Repo{
 		svc: dynamodb.New(sess),
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
+// Bid is the DB represntation of a bid.
 type Bid struct {
 	Amount int    `dynamodbav:"amount"`
 	Bidder string `dynamodbav:"bidder_email"`
@@ -17,26 +18,33 @@ type Bid struct {
 	BidID  string `dynamodbav:"bidID"`
 }
 
+const bidsTableID = "millennium-falcon-auction-bids"
+
+// CreateBid will create a new bid in dyanmoDB.
 func (r *Repo) CreateBid(in Bid) error {
 	log.Println("repo: attempting to create a new bid in dyanmo.")
 	item, err := dynamodbattribute.MarshalMap(in)
 	if err != nil {
-		return errors.New("repo: could not marshal created question into dynamo map")
+		log.Printf("repo: Error marshaling map %v \n", err)
+		return err
 	}
 
 	if _, err = r.svc.PutItem(&dynamodb.PutItemInput{
-		TableName: aws.String("millennium-falcon-auction-bids"),
+		TableName: aws.String(bidsTableID),
 		Item:      item,
 	}); err != nil {
-		return errors.New("repo: could not put created bid into dynamo")
+		log.Printf("repo: Error putting in bid %v \n", err)
+		return err
 	}
 
-	log.Printf("repo: successfully created bid %s", in.BidID)
+	log.Printf("repo: successfully created bid %s \n", in.BidID)
 
 	return nil
 }
 
+// DeleteBid will delete a bid in dyanmoDB.
 func (r *Repo) DeleteBid(bid Bid) error {
+	log.Printf("repo: attempting to delete bid %s in dyanmo \n", bid.BidID)
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"bidID": {
@@ -46,7 +54,7 @@ func (r *Repo) DeleteBid(bid Bid) error {
 				N: aws.String(strconv.Itoa(bid.Amount)),
 			},
 		},
-		TableName: aws.String("millennium-falcon-auction-bids"),
+		TableName: aws.String(bidsTableID),
 	}
 
 	_, err := r.svc.DeleteItem(input)
@@ -55,12 +63,14 @@ func (r *Repo) DeleteBid(bid Bid) error {
 		return err
 	}
 
+	log.Printf("repo: Succesfully deleted bid %s \n", bid.BidID)
+
 	return nil
 }
 
-// going to assume here that the bid you are updating is just the amount
-// also since the amount is part of the key im going to make this a little hacky
-// Im going to first get the bid, delete it, then create a new entry with the updated amount
+// UpdateBid is used to update an existing bid.
+// This will only allow you to update the amount on a bid.
+// The steps involved in updating a a bid are: first get the bid, delete it, then create a new entry with the updated amount.
 func (r *Repo) UpdateBid(bidID string, amount int) (Bid, error) {
 	log.Printf("repo: Attempting to update bid %v with new amount %d", bidID, amount)
 
@@ -86,15 +96,16 @@ func (r *Repo) UpdateBid(bidID string, amount int) (Bid, error) {
 		return Bid{}, err
 	}
 
+	log.Printf("repo: Succesfully created bid %s \n", bidID)
 	return bid, nil
 }
 
-// TODO: figure out why I have to use query
+// GetBid will get a big based off the bid ID.
 func (r *Repo) GetBid(bidID string) (Bid, error) {
 	log.Printf("repo: Getting bid %s", bidID)
 
 	resp, err := r.svc.Query(&dynamodb.QueryInput{
-		TableName: aws.String("millennium-falcon-auction-bids"),
+		TableName: aws.String(bidsTableID),
 		IndexName: aws.String("bidID-index"),
 		KeyConditions: map[string]*dynamodb.Condition{
 			"bidID": {
@@ -127,11 +138,12 @@ func (r *Repo) GetBid(bidID string) (Bid, error) {
 	return bid, nil
 }
 
+// GetTopBids will return a certain amount of top bids for a certain item.
 func (r *Repo) GetTopBids(itemID string, numberOfBids int) ([]Bid, error) {
 	log.Printf("repo: Getting %d bids for %s", numberOfBids, itemID)
 
 	resp, err := r.svc.Query(&dynamodb.QueryInput{
-		TableName: aws.String("millennium-falcon-auction-bids"),
+		TableName: aws.String(bidsTableID),
 		IndexName: aws.String("item_id-amount-index"),
 		KeyConditions: map[string]*dynamodb.Condition{
 			"item_id": {
@@ -147,6 +159,7 @@ func (r *Repo) GetTopBids(itemID string, numberOfBids int) ([]Bid, error) {
 		Limit:            aws.Int64(int64(numberOfBids)),
 	})
 	if err != nil {
+		log.Println("repo: Error querying for top bids ")
 		return nil, err
 	}
 	if resp.Count == nil {
@@ -160,5 +173,6 @@ func (r *Repo) GetTopBids(itemID string, numberOfBids int) ([]Bid, error) {
 		return nil, err
 	}
 
+	log.Printf("repo: Succesfully retrived top bids for item %s \n", itemID)
 	return bids, nil
 }
